@@ -1,0 +1,110 @@
+<?php
+
+/**
+ * @file
+ *
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function shib_preprovision_menu() {
+  $items = array();
+
+  $items['admin/config/people/shib_auth/provision'] = array(
+    'title'            => 'Provisioning settings',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('shib_preprovision_admin_settings'),
+    'access arguments' => array('administer shibboleth authentication'),
+    'file'             => 'shib_preprovision.admin.inc',
+    'type'             => MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_user_insert().
+ *
+ * @param edit
+ *  The array of form values submitted by the user.
+ *
+ * @param account
+ *  The user object on which the operation is being performed.
+ *
+ * @param category
+ *  The active category of user information being edited.
+ */
+function shib_preprovision_user_insert($edit, $account, $category) {
+  if (variable_get('shib_preprovision_account', FALSE)){
+    update_shib_authmap($edit, $account);
+  }
+}
+
+/**
+ * Implements hook_user_update().
+ *
+ * @param edit
+ *  The array of form values submitted by the user.
+ *
+ * @param account
+ *  The user object on which the operation is being performed.
+ *
+ * @param category
+ *  The active category of user information being edited.
+ */
+function shib_preprovision_user_update($edit, $account, $category) {
+  if (variable_get('shib_preprovision_account', FALSE)){
+    update_shib_authmap($edit, $account);
+  }
+}
+
+
+/**
+ * The shib_auth module only allows those users to login who exist in the
+ * shib_authmap table. This means that when we add our pre-selected users into
+ * Drupal, we would also want to add them to the shib_authmap table.
+ *
+ * This function automatically updates the shib_authmap and authmap tables
+ * according to the documentation of shib_auth module, and will only be called
+ * if the usernames are defined using a Regular expression in the Shib_auth
+ * module settings.
+ *
+ * @see https://wiki.niif.hu/index.php?title=DrupalShibbolethReadmeDev#Pre-creating_users
+ */
+function update_shib_authmap($edit, $account) {
+  // Test for SSO account
+  // SSO account test passes if username matches the regular expression.
+  if (preg_match(variable_get('shib_preprovision_username_regex', ''), $account->name)) {
+    // This is an SSO account, update shib_authmap table
+    if (!db_select('shib_authmap', 's')->condition('s.uid', $account->uid)->countQuery()->execute()->fetchField()) {
+      db_insert('shib_authmap')
+        ->fields(array('uid' => $account->uid, 'targeted_id' => $account->name))
+        ->execute();
+    }
+
+    // This is an SSO account, update the authmap table with the module name.
+    if (!db_select('authmap', 'a')->condition('a.uid', $account->uid)->countQuery()->execute()->fetchField()) {
+      db_insert('authmap')
+        ->fields(array('uid' => $account->uid, 'authname' => $account->name, 'module' => 'shib_auth'))
+        ->execute();
+    }
+  }
+  else {
+    // This is not an SSO account, however, this may be a change from an SSO
+    // to non-SSO account,
+    // e.g. student from Alumni. In this case, we delete the entry from the
+    // shib_authmap and authmap tables for good measure.
+    if (db_select('shib_authmap', 's')->condition('s.uid', $account->uid)->countQuery()->execute()->fetchField()) {
+      db_delete('shib_authmap')
+        ->condition('uid', $account->uid)
+        ->execute();
+    }
+
+    if (db_select('authmap', 'a')->condition('a.uid', $account->uid)->countQuery()->execute()->fetchField()) {
+      db_delete('authmap')
+        ->condition('uid', $account->uid)
+        ->execute();
+    }
+  }
+}

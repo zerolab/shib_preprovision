@@ -1,0 +1,5 @@
+name = Shibboleth Pre-provision
+description = Provision users manually added to Drupal to be allowed to work with Shibboleth authentication
+core = 7.x
+
+dependencies[] = shib_auth
