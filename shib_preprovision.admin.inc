@@ -26,7 +26,7 @@ function shib_preprovision_admin_settings() {
   $form['shib_provision']['shib_preprovision_username_regex'] = array(
     '#type'          => 'textfield',
     '#title'         => t('SSO usernames regular expression'),
-    '#description'   => t('Accounts with usernames that match this regular expression will be treated as SSO accounts. Example: for usernames ending in "@ox.ac.uk", use "/@ox.ac.uk$/".'),
+    '#description'   => t('Accounts with usernames that match this regular expression will be treated as SSO accounts. Example: for usernames ending in "@example.com", use "/@example\.com$/".'),
     '#default_value' => variable_get('shib_preprovision_username_regex', ''),
     '#states' => array(
       'visible' => array(
