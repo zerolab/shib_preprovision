@@ -73,6 +73,11 @@ function shib_preprovision_user_update($edit, $account, $category) {
  * @see https://wiki.niif.hu/index.php?title=DrupalShibbolethReadmeDev#Pre-creating_users
  */
 function update_shib_authmap($edit, $account) {
+  // shib_auth registration in progress, skip pre-creation.
+  if (isset($_SESSION['shib_auth_register_in_progress']) && $_SESSION['shib_auth_register_in_progress']) {
+    return;
+  }
+
   // Test for SSO account
   // SSO account test passes if username matches the regular expression.
   if (preg_match(variable_get('shib_preprovision_username_regex', ''), $account->name)) {
